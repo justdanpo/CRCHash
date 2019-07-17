@@ -112,6 +112,11 @@ error-checking mechanism.
 #ifndef CRCHashH
 #define CRCHashH
 
+#include <stdint.h>
+#if __cplusplus >= 201103L
+#include <type_traits>
+#endif
+
 //******************************************************************************
 // Template class 'CRCHash' implements mirror-algorithm of CRC calculation.
 
@@ -119,6 +124,12 @@ template <typename T, const T POLYNOM, const T INITIAL, const T FINAL>
 class CRCHash
 	{
 	private:
+#if __cplusplus >= 201103L
+		static_assert(std::is_unsigned<T>::value, "type parameter should be unsigned");
+#else
+		typedef int type_parameter_should_be_unsigned[T(-1)>0 ? 1 : -1];
+#endif
+
 		template <unsigned int index> class TableEntry;
 
 		T CRC;
@@ -147,8 +158,9 @@ template <typename T, const T POLYNOM, const T INITIAL, const T FINAL>
 	void CRCHash<T, POLYNOM, INITIAL, FINAL>::
 		Update(const void *Buffer, unsigned Length)
 			{
+				const unsigned char *ptr = static_cast<const unsigned char*>(Buffer);
 				while (Length--)
-					Update(*static_cast<const unsigned char *>(Buffer)++);
+					Update(*ptr++);
 			}
 
 //******************************************************************************
@@ -169,22 +181,18 @@ template <typename T, const T POLYNOM, const T INITIAL, const T FINAL>
 		class CRCHash<T, POLYNOM, INITIAL, FINAL>::TableEntry
 			{
 			private:
-				enum
-				{
-					R0 = index >> 1 ^ ( index & 1 ? POLYNOM : 0 ),
-					R1 = R0 >> 1 ^ ( R0 & 1 ? POLYNOM : 0 ),
-					R2 = R1 >> 1 ^ ( R1 & 1 ? POLYNOM : 0 ),
-					R3 = R2 >> 1 ^ ( R2 & 1 ? POLYNOM : 0 ),
-					R4 = R3 >> 1 ^ ( R3 & 1 ? POLYNOM : 0 ),
-					R5 = R4 >> 1 ^ ( R4 & 1 ? POLYNOM : 0 ),
-					R6 = R5 >> 1 ^ ( R5 & 1 ? POLYNOM : 0 ),
-					R7 = R6 >> 1 ^ ( R6 & 1 ? POLYNOM : 0 ),
-				};
+				static const T R0 = index;
+				static const T R1 = (R0 >> 1) ^ ( R0 & 1 ? POLYNOM : 0 );
+				static const T R2 = (R1 >> 1) ^ ( R1 & 1 ? POLYNOM : 0 );
+				static const T R3 = (R2 >> 1) ^ ( R2 & 1 ? POLYNOM : 0 );
+				static const T R4 = (R3 >> 1) ^ ( R3 & 1 ? POLYNOM : 0 );
+				static const T R5 = (R4 >> 1) ^ ( R4 & 1 ? POLYNOM : 0 );
+				static const T R6 = (R5 >> 1) ^ ( R5 & 1 ? POLYNOM : 0 );
+				static const T R7 = (R6 >> 1) ^ ( R6 & 1 ? POLYNOM : 0 );
+				static const T R8 = (R7 >> 1) ^ ( R7 & 1 ? POLYNOM : 0 );
+
 			public:
-				enum
-				{
-					value = R7
-				};
+				static const T value = R8;
 			};
 
 template <typename T, const T POLYNOM, const T INITIAL, const T FINAL>
@@ -322,18 +330,13 @@ template <typename T, const T POLYNOM, const T INITIAL, const T FINAL>
 
 //******************************************************************************
 
-typedef unsigned char  CRC08;
-typedef unsigned short CRC16;
-typedef unsigned long  CRC32;
-
-class CRC08Hash : public CRCHash<CRC08, 0x8CU, 0xFFU, 0xFFU> {};
-class CRC16Hash : public CRCHash<CRC16, 0xA001U, 0x0000U, 0x0000U> {};
-class CRC32Hash : public CRCHash<CRC32, 0xEDB88320UL, 0xFFFFFFFFUL, 0xFFFFFFFFUL> {};
+class CRC08Hash : public CRCHash<uint8_t, 0x8CU, 0xFFU, 0xFFU> {};
+class CRC16Hash : public CRCHash<uint16_t, 0xA001U, 0x0000U, 0x0000U> {};
+class CRC32Hash : public CRCHash<uint32_t, 0xEDB88320UL, 0xFFFFFFFFUL, 0xFFFFFFFFUL> {};
 
 //******************************************************************************
 
-// typedef unsigned __int64 CRC64;
-// class CRC64Hash : public CRCHash<CRC64, 0xD800000000000000UI64, 0xFFFFFFFFFFFFFFFFUI64, 0xFFFFFFFFFFFFFFFFUI64> {};
+//class CRC64Hash : public CRCHash<uint64_t, 0xD800000000000000ULL, 0xFFFFFFFFFFFFFFFFULL, 0xFFFFFFFFFFFFFFFFULL> {};
 
 //******************************************************************************
 
